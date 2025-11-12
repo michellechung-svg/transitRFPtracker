@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transit Agency RFP Tracking Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+        .header p { font-size: 14px; opacity: 0.9; }
+        .tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+            padding: 0 30px;
+        }
+        .tab {
+            padding: 15px 25px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #6c757d;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            position: relative;
+            top: 2px;
+            transition: all 0.2s;
+        }
+        .tab:hover { color: #495057; background: rgba(102, 126, 234, 0.05); }
+        .tab.active { color: #667eea; border-bottom-color: #667eea; background: white; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .info-banner {
+            background: #e7f3ff;
+            border-left: 4px solid #667eea;
+            padding: 15px 30px;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 30px;
+            background: #f8f9fa;
+        }
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .stat-value { font-size: 32px; font-weight: 700; color: #667eea; }
+        .stat-label { font-size: 13px; color: #6c757d; font-weight: 600; }
+        
+        /* Legend */
+        .legend-container {
+            padding: 20px 30px;
+            background: white;
+            border-bottom: 2px solid #e9ecef;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .legend-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #495057;
+            margin-right: 10px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #495057;
+        }
+        .legend-color {
+            width: 20px;
+            height: 12px;
+            border-radius: 3px;
+        }
+        .legend-color.active { background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); }
+        .legend-color.solicitation { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        .legend-color.awarded { background: linear-gradient(135deg, #30cfd0 0%, #330867 100%); }
+        .legend-color.expiring { background: linear-gradient(135deg, #ff9a56 0%, #ff6a88 100%); }
+        .legend-color.lyft-partner { background: linear-gradient(135deg, #00d4ff 0%, #0099ff 100%); border: 2px solid #0066cc; }
+        .legend-color.evaluation { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+        .legend-color.planned { background: linear-gradient(135deg, #b4a7d6 0%, #8e7cc3 100%); }
+        
+        /* Controls */
+        .controls {
+            padding: 20px 30px;
+            background: white;
+            border-bottom: 2px solid #e9ecef;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .filter-group { display: flex; gap: 8px; align-items: center; }
+        .filter-group label { font-size: 13px; font-weight: 600; color: #495057; }
+        select, input {
+            padding: 8px 12px;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 13px;
+            background: white;
+        }
+        
+        /* Gantt Chart Styles */
+        .gantt-wrapper {
+            position: relative;
+            margin: 20px;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            overflow: hidden;
+            background: white;
+        }
+        
+        .gantt-container {
+            overflow: auto;
+            max-height: 600px;
+            position: relative;
+            overflow-x: auto;
+            overflow-y: visible;
+            padding-top: 10px;
+        }
+        
+        .gantt-chart {
+            min-width: 1600px;
+            background: white;
+            position: relative;
+            overflow: visible;
+        }
+        
+        /* Timeline Header */
+        .timeline-header {
+            display: grid;
+            grid-template-columns: 280px repeat(27, 50px);
+            background: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .timeline-header-cell {
+            padding: 10px 5px;
+            text-align: center;
+            font-size: 11px;
+            font-weight: 600;
+            color: #495057;
+            border-right: 1px solid #e9ecef;
+        }
+        .timeline-header-cell.agency {
+            text-align: left;
+            padding-left: 15px;
+        }
+        
+        /* Agency Rows */
+        .agency-row {
+            display: grid;
+            grid-template-columns: 280px repeat(27, 50px);
+            min-height: 110px;
+            border-bottom: 1px solid #e9ecef;
+            background: white;
+            transition: background 0.2s;
+            position: relative;
+            padding-top: 20px;
+            overflow: visible;
+        }
+        .agency-row:hover {
+            background: #f8f9fa;
+        }
+        
+        /* Agency Info Panel */
+        .agency-info {
+            padding: 15px;
+            border-right: 2px solid #dee2e6;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .agency-name {
+            font-size: 14px;
+            font-weight: 700;
+            color: #212529;
+            margin-bottom: 3px;
+        }
+        .agency-service {
+            font-size: 11px;
+            color: #6c757d;
+            margin-bottom: 5px;
+        }
+        .type-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 9px;
+            font-weight: 600;
+            color: white;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        .type-paratransit, .type-operations { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .type-microtransit { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        .type-partnership { background: linear-gradient(135deg, #00d4ff 0%, #0099ff 100%); }
+        .type-technology { background: linear-gradient(135deg, #30cfd0 0%, #330867 100%); }
+        .type-assessment { background: linear-gradient(135deg, #ffd93d 0%, #ff9a00 100%); }
+        
+        .agency-spend {
+            font-size: 11px;
+            color: #0099ff;
+            font-weight: 700;
+        }
+        .agency-details {
+            font-size: 9px;
+            color: #6c757d;
+            margin-top: 3px;
+        }
+        
+        /* Timeline Cells */
+        .timeline-cell {
+            position: relative;
+            border-right: 1px solid #f0f0f0;
+            min-height: 110px;
+            padding-top: 20px;
+            overflow: visible;
+        }
+        
+        /* Contract Bars */
+        .contract-bar {
+            position: absolute;
+            height: 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            z-index: 2;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            padding: 0 5px;
+            font-size: 10px;
+            color: white;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .contract-bar:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+            z-index: 10;
+        }
+        
+        /* Uncertain start date styling */
+        .contract-bar.uncertain-start::before {
+            content: "◄";
+            position: absolute;
+            left: -20px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 16px;
+            font-weight: bold;
+            color: #856404;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+        
+        /* Ongoing contract gradient */
+        .contract-bar.ongoing-gradient {
+            background: linear-gradient(to right,
+                var(--bar-color) 0%,
+                var(--bar-color) 60%,
+                var(--bar-color-fade) 80%,
+                var(--bar-color-light) 95%,
+                transparent 100%
+            );
+        }
+        
+        /* Ongoing arrow indicator */
+        .ongoing-arrow {
+            position: absolute;
+            right: 5px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 14px;
+            font-weight: bold;
+            color: rgba(255,255,255,0.9);
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+        
+        /* Extension marker */
+        .extension-marker {
+            position: absolute;
+            background: #ff6b6b;
+            color: white;
+            font-size: 8px;
+            font-weight: 700;
+            padding: 1px 3px;
+            border-radius: 3px;
+            top: 2px;
+            z-index: 5;
+            white-space: nowrap;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+        
+        /* CSS Variables for gradient colors */
+        .bar-active.ongoing-gradient {
+            --bar-color: #a8edea;
+            --bar-color-fade: rgba(168, 237, 234, 0.6);
+            --bar-color-light: rgba(168, 237, 234, 0.3);
+        }
+        .bar-lyft-partner.ongoing-gradient {
+            --bar-color: #00d4ff;
+            --bar-color-fade: rgba(0, 212, 255, 0.6);
+            --bar-color-light: rgba(0, 212, 255, 0.3);
+        }
+        
+        /* Bar positioning for multiple contracts */
+        .row-1 { top: 20px; }
+        .row-2 { top: 48px; }
+        .row-3 { top: 76px; }
+        
+        /* Status Colors */
+        .bar-active { background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); }
+        .bar-solicitation { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        .bar-awarded { background: linear-gradient(135deg, #30cfd0 0%, #330867 100%); }
+        .bar-expiring { background: linear-gradient(135deg, #ff9a56 0%, #ff6a88 100%); }
+        .bar-lyft-partner { background: linear-gradient(135deg, #00d4ff 0%, #0099ff 100%); border: 2px solid #0066cc; }
+        .bar-evaluation { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+        .bar-planned { background: linear-gradient(135deg, #b4a7d6 0%, #8e7cc3 100%); }
+        
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            display: none;
+        }
+        .modal-overlay.show { display: block; }
+        
+        .modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            border-radius: 12px;
+            max-width: 700px;
+            width: 90%;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            z-index: 1001;
+            display: none;
+        }
+        .modal.show { display: block; }
+        
+        .modal-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px 12px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-title { font-size: 18px; font-weight: 700; }
+        .modal-close {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            font-size: 24px;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            line-height: 1;
+        }
+        
+        .modal-body { padding: 24px; }
+        .modal-section {
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .modal-section:last-child { border-bottom: none; }
+        .section-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+        }
+        .modal-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+        .modal-label {
+            font-size: 12px;
+            color: #6c757d;
+            font-weight: 600;
+        }
+        .modal-value {
+            font-size: 12px;
+            font-weight: 600;
+            text-align: right;
+        }
+        
+        .date-note {
+            background: #fff3cd;
+            color: #856404;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            margin-bottom: 10px;
+        }
+        
+        .source-card {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            border-left: 3px solid #667eea;
+        }
+        .source-type {
+            display: inline-block;
+            padding: 2px 8px;
+            background: #667eea;
+            color: white;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        .source-title { font-weight: 700; font-size: 12px; margin-bottom: 5px; }
+        .source-desc { font-size: 11px; color: #6c757d; margin-bottom: 5px; }
+        .source-link {
+            color: #667eea;
+            text-decoration: none;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .source-link:hover { text-decoration: underline; }
+        
+        .ref-section {
+            background: #f8f9fa;
+            padding: 20px;
+            margin: 20px;
+            border-radius: 8px;
+        }
+        .ref-agency {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        .ref-agency-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #212529;
+            margin-bottom: 15px;
+        }
+        .ref-contract {
+            margin-bottom: 15px;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+        .ref-contract-title {
+            font-weight: 600;
+            font-size: 13px;
+            color: #495057;
+            margin-bottom: 8px;
+        }
+        .verified-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            background: #d4edda;
+            color: #155724;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚍 Transit Agency RFP Tracking Dashboard</h1>
+            <p>Paratransit, Microtransit & Mobility-on-Demand Opportunities</p>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab(0)">📊 RFP Tracker</div>
+            <div class="tab" onclick="switchTab(1)">📚 Data Sources & References</div>
+        </div>
+
+        <div id="content0" class="tab-content active">
+            <div class="info-banner">
+                <p><strong>📅 Timeline:</strong> July 2006 - June 2033 (27 years) | Click any contract bar for detailed information | Red "EXT" markers indicate contract extensions</p>
+            </div>
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-value">18</div>
+                    <div class="stat-label">Agencies Tracked</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">28</div>
+                    <div class="stat-label">Total Contracts</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">3</div>
+                    <div class="stat-label">Active Lyft Partners</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">$11.7M</div>
+                    <div class="stat-label">Total Lyft Spend</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">46</div>
+                    <div class="stat-label">Verified Sources</div>
+                </div>
+            </div>
+            
+            <!-- Legend -->
+            <div class="legend-container">
+                <span class="legend-title">Contract Status Legend:</span>
+                <div class="legend-item">
+                    <div class="legend-color active"></div>
+                    <span>Active</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color lyft-partner"></div>
+                    <span>Lyft Partner</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color solicitation"></div>
+                    <span>Solicitation</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color evaluation"></div>
+                    <span>Evaluation</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color awarded"></div>
+                    <span>Awarded</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color expiring"></div>
+                    <span>Expiring Soon</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color planned"></div>
+                    <span>Planned/Future</span>
+                </div>
+                <div class="legend-item" style="margin-left: 20px; font-weight: 600;">
+                    <span style="margin-right: 5px;">→</span>
+                    <span>Ongoing/Indefinite</span>
+                </div>
+                <div class="legend-item" style="font-weight: 600;">
+                    <span style="margin-right: 5px;">◄</span>
+                    <span>Earlier Start (Unverified)</span>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <div class="filter-group">
+                    <label>Filter by Type:</label>
+                    <select id="typeFilter" onchange="filterRows()">
+                        <option value="all">All Types</option>
+                        <option value="operations">Operations</option>
+                        <option value="technology">Technology</option>
+                        <option value="partnership">Partnership</option>
+                        <option value="microtransit">Microtransit</option>
+                        <option value="assessment">Assessment</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Filter by Status:</label>
+                    <select id="statusFilter" onchange="filterRows()">
+                        <option value="all">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="lyft-partner">Lyft Partner</option>
+                        <option value="solicitation">Solicitation</option>
+                        <option value="evaluation">Evaluation</option>
+                        <option value="awarded">Awarded</option>
+                        <option value="expiring">Expiring</option>
+                        <option value="planned">Planned</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Search Agency:</label>
+                    <input type="text" id="searchBox" placeholder="Type agency name..." oninput="filterRows()">
+                </div>
+            </div>
+            
+            <div class="gantt-wrapper">
+                <div class="gantt-container">
+                    <div class="gantt-chart" id="ganttChart"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="content1" class="tab-content">
+            <div id="referencesContainer"></div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal-overlay" id="modalOverlay" onclick="closeModal()"></div>
+    <div class="modal" id="modal">
+        <div class="modal-header">
+            <div class="modal-title" id="modalTitle">Contract Details</div>
+            <button class="modal-close" onclick="closeModal()">×</button>
+        </div>
+        <div class="modal-body" id="modalBody"></div>
+    </div>
+
+    <script>
+        // Full contract data from CSVs - properly merged
+        const contractsData = [
+            // MBTA - Merged contracts 1 (base + extension)
+            {id: 1, contractIds: "1", agency: "MBTA", service: "THE RIDE", title: "RIDE Flex TNC", type: "partnership", status: "lyft-partner", 
+             rfpRelease: "6/1/16", award: "9/1/16", start: "6/1/20", end: "6/30/25", 
+             extensionDate: "7/1/23", software: "Spare", operators: "National Express Transit, Veterans Transportation", lyftSpend: 8103767},
+            {id: 2, contractIds: "2", agency: "MBTA", service: "THE RIDE", title: "Spare Platform", type: "technology", status: "active", 
+             award: "12/17/24", start: "12/17/24", end: "12/17/29", software: "Spare", operators: "National Express Transit, Veterans Transportation"},
+            
+            // MTA NYC
+            {id: 3, contractIds: "3", agency: "MTA NYC Transit", service: "Access-A-Ride", title: "Tech RFP 468625", type: "technology", status: "awarded", 
+             rfpRelease: "6/1/24", dueDate: "9/9/24", award: "8/18/25", start: "10/1/25", end: "9/30/30", 
+             software: "RideCo (Oct 2025)", operators: "PTM Management Corp, Broker Services", lyftSpend: 2339193},
+            
+            // DART
+            {id: 5, contractIds: "5", agency: "DART", service: "GoLink Microtransit", title: "GoLink/Lyft", type: "partnership", status: "lyft-partner", 
+             rfpRelease: "5/1/20", award: "5/26/20", start: "6/1/20", end: "6/1/23", software: "Spare", operators: "MV Transportation", lyftSpend: 1230873},
+            
+            // WMATA
+            {id: 6, contractIds: "6", agency: "WMATA", service: "MetroAccess", title: "Service RFP", type: "operations", status: "evaluation", 
+             rfpRelease: "1/23/24", dueDate: "3/12/24", start: "1/23/24", end: "12/31/24", software: "Trapeze", operators: "Multiple Regional"},
+            
+            // Access Services
+            {id: 8, contractIds: "8", agency: "Access Services", service: "Access Paratransit (LA)", title: "West Central AS-4180", type: "operations", 
+             status: "solicitation", rfpRelease: "7/1/25", dueDate: "10/6/25 15:00 PT", start: "7/1/25", end: "6/30/26", software: "Trapeze", operators: "Multiple Regional (6)"},
+            
+            // Pace
+            {id: 9, contractIds: "9", agency: "Pace (RTA)", service: "Regional ADA Paratransit", title: "RAP/TAP Program", type: "operations", 
+             status: "active", award: "7/1/06", start: "7/1/06", ongoing: true, software: "Trapeze", operators: "Multiple"},
+            
+            // Maryland Transit
+            {id: 10, contractIds: "10", agency: "Maryland Transit Admin", service: "MobilityLink", title: "MobilityLink Contract", type: "operations", 
+             status: "active", award: "5/17/22", start: "5/17/22", end: "12/31/29", software: "Trapeze", operators: "First Transit, MV, TransDev"},
+            
+            // NJ Transit
+            {id: 11, contractIds: "11", agency: "NJ Transit", service: "Access Link", title: "Access Link Region 4", type: "operations", 
+             status: "active", dueDate: "5/8/25", award: "6/12/25", start: "7/1/25", end: "6/30/30", 
+             software: "RouteMatch (Ecolane)", operators: "MV Transportation, A-1"},
+            
+            // OCTA
+            {id: 12, contractIds: "12", agency: "OCTA", service: "OC ACCESS", title: "OC ACCESS/Flex", type: "operations", 
+             status: "expiring", rfpRelease: "12/14/20", dueDate: "3/2/21", start: "7/1/20", end: "6/30/25", 
+             software: "Trapeze", operators: "Transdev"},
+            
+            // METRO Houston
+            {id: 13, contractIds: "13", agency: "METRO Houston", service: "METROLift", title: "METROLift Contract", type: "operations", 
+             status: "active", award: "3/24/21", start: "4/11/21", end: "4/10/26", software: "Trapeze", operators: "MV Transportation"},
+            
+            // King County Metro - Merged 14+15
+            {id: 14, contractIds: "14,15", agency: "King County Metro", service: "Access Transportation", title: "Metro Flex Service", 
+             type: "microtransit", status: "active", award: "11/1/24", start: "3/6/23", end: "12/31/28", 
+             extensionDate: "9/24/24", software: "Ecolane", operators: "In-house + Contractors"},
+            
+            // Metropolitan Council - Using estimated start date with uncertain indicator
+            {id: 16, contractIds: "16", agency: "Metropolitan Council", service: "Metro Mobility", title: "Metro Mobility Operations", 
+             type: "operations", status: "active", start: "1/1/10", ongoing: true, uncertainStart: true, 
+             software: "Trapeze", operators: "Multiple Regional", 
+             note: "Start date is ESTIMATED. Metro Mobility has operated since the 1990s but no verified contract start date found."},
+            
+            // Denver RTD
+            {id: 17, contractIds: "17", agency: "Denver RTD", service: "Access-a-Ride", title: "Access-on-Demand", type: "microtransit", 
+             status: "active", start: "1/1/20", end: "12/31/25", software: "TBD", operators: "MV Transportation"},
+            {id: 18, contractIds: "18", agency: "Denver RTD", service: "Access-a-Ride", title: "MTM Assessment Contract", type: "assessment", 
+             status: "active", start: "9/1/23", end: "8/31/28", software: "TBD", operators: "MV Transportation"},
+            
+            // Miami-Dade
+            {id: 19, contractIds: "19", agency: "Miami-Dade Transit", service: "Special Transportation", title: "STS Operations", 
+             type: "operations", status: "active", award: "7/2/24", start: "7/2/24", ongoing: true, 
+             software: "Trapeze", operators: "MV Transportation"},
+            
+            // AC Transit
+            {id: 21, contractIds: "21", agency: "AC Transit", service: "East Bay Paratransit", title: "Spare Contract", type: "technology", 
+             status: "active", award: "4/24/24", start: "4/26/24", end: "4/25/29", software: "Spare", operators: "MV Transportation"},
+            
+            // SEPTA
+            {id: 22, contractIds: "22", agency: "SEPTA", service: "CCT Connect", title: "SEPTA Access Philadelphia", type: "operations", 
+             status: "active", rfpRelease: "2/22/18", award: "2/22/18", start: "7/1/16", end: "6/30/26", 
+             software: "Trapeze", operators: "Transdev"},
+            {id: 23, contractIds: "23", agency: "SEPTA", service: "CCT Connect", title: "SEPTA Access Montgomery", type: "operations", 
+             status: "active", rfpRelease: "6/3/20", award: "6/3/20", start: "7/1/20", end: "6/30/25", 
+             software: "Trapeze", operators: "Transdev"},
+            {id: 24, contractIds: "24", agency: "SEPTA", service: "CCT Connect", title: "RideCo Software", type: "technology", 
+             status: "active", rfpRelease: "9/1/23", award: "9/1/23", start: "1/28/24", end: "1/27/29", 
+             software: "RideCo", operators: "Transdev"},
+            {id: 25, contractIds: "25", agency: "SEPTA", service: "CCT Connect", title: "Paratransit RFP 2025", type: "operations", 
+             status: "planned", rfpRelease: "2025", start: "7/1/28", end: "6/30/33", software: "TBD", operators: "TBD"},
+            
+            // SFMTA - Merged 26+27
+            {id: 26, contractIds: "26,27", agency: "SFMTA", service: "SF Paratransit", title: "SF Paratransit Contract", type: "operations", 
+             status: "active", start: "7/1/21", end: "6/30/28", extensionDate: "7/1/26", 
+             software: "Ecolane", operators: "Transdev"},
+            
+            // LA Metro
+            {id: 28, contractIds: "28", agency: "LA Metro", service: "Via Access Services", title: "Regional Services", type: "operations", 
+             status: "active", start: "1/1/15", ongoing: true, software: "Trapeze (via Access)", operators: "Multiple"}
+        ];
+
+        // All references from CSV
+        const referencesData = [
+            {contractId: "1", sourceType: "report", title: "TCRP Report 295 - MBTA Case Study", desc: "Contract terms Jul 1 2020 - Jun 30 2025", url: "https://nap.nationalacademies.org/read/26860/chapter/15"},
+            {contractId: "1", sourceType: "report", title: "TCRP Report 295 - MBTA RFP Process", desc: "RFP process initiated 2016", url: "https://nap.nationalacademies.org/read/26860/chapter/9"},
+            {contractId: "1", sourceType: "news_article", title: "Uber Blog MBTA Partnership", desc: "Program made permanent July 1 2021", url: "https://www.uber.com/blog/mbta/"},
+            {contractId: "2", sourceType: "press_release", title: "Spare Technology Award", desc: "Award Dec 17 2024", url: "https://spare.com/press-releases/mbta-spare"},
+            {contractId: "3", sourceType: "board_resolution", title: "MTA Board Resolution", desc: "$72M contract award Aug 18 2025", url: "https://www.mta.info/document/186626"},
+            {contractId: "3", sourceType: "board_resolution", title: "MTA RFP 468625", desc: "RFP release June 2024", url: "https://www.mta.info/document/186626"},
+            {contractId: "5", sourceType: "board_award", title: "DART GoLink Board Award", desc: "May 26 2020 - 3-year TNC contract", url: "https://dartdaily.dart.org/"},
+            {contractId: "5", sourceType: "program_info", title: "GoLink Program", desc: "Official DART GoLink service", url: "https://www.dart.org/guide/golink"},
+            {contractId: "6", sourceType: "procurement_notice", title: "BidNet Direct", desc: "Solicitation 43019043049", url: "https://www.bidnetdirect.com/"},
+            {contractId: "8", sourceType: "procurement_notice", title: "APTA RFP AS-4180", desc: "Due Oct 6 2025 3PM PT", url: "https://www.highergov.com/"},
+            {contractId: "9", sourceType: "program_info", title: "Pace ADA Paratransit", desc: "Since July 1 2006", url: "https://www.apta.com/"},
+            {contractId: "10", sourceType: "contract_award", title: "MobilityLink Award", desc: "MV Transportation 7-year", url: "https://mvtransit.com/"},
+            {contractId: "11", sourceType: "procurement_portal", title: "NJ Transit RFP", desc: "Access Link Region 4", url: "https://www.newjerseybids.com/"},
+            {contractId: "12", sourceType: "procurement_portal", title: "CAMMNET Portal", desc: "Posted 12/14/2020", url: "https://cammnet.octa.net/"},
+            {contractId: "13", sourceType: "contract_award", title: "METROLift Award", desc: "MV Transportation 5-year", url: "https://mvtransit.com/"},
+            {contractId: "14", sourceType: "press_release", title: "Metro Flex Launch", desc: "Via Transportation partnership", url: "https://www.masstransitmag.com/"},
+            {contractId: "19", sourceType: "memo", title: "Miami-Dade County", desc: "STS Contract 7/2/24", url: "https://www.miamidade.gov/"},
+            {contractId: "21", sourceType: "press_release", title: "Spare Partnership", desc: "$4.5M contract April 26 2024", url: "https://spare.com/"},
+            {contractId: "22", sourceType: "press_release", title: "SEPTA Philadelphia", desc: "5-year contract Feb 22 2018", url: "https://eastoncoach.com/"},
+            {contractId: "23", sourceType: "press_release", title: "SEPTA Montgomery", desc: "5-year contract June 3 2020", url: "https://eastoncoach.com/"},
+            {contractId: "24", sourceType: "press_release", title: "RideCo SEPTA", desc: "Software contract Sep 2023", url: "https://www.rideco.com/"},
+            {contractId: "26", sourceType: "procurement_portal", title: "SFMTA Procurement", desc: "SF Paratransit contracts", url: "https://www.sfmta.com/"}
+        ];
+
+        // Helper function to parse dates
+        function dateToPosition(dateStr, startYear = 2007) {
+            if (!dateStr) return null;
+            const parts = dateStr.split('/');
+            const month = parseInt(parts[0]) - 1;
+            const year = parseInt(parts[2].length === 2 ? '20' + parts[2] : parts[2]);
+            return ((year - startYear) * 12 + month) * (50/12);
+        }
+
+        // Build the Gantt chart
+        function buildGantt() {
+            const chart = document.getElementById('ganttChart');
+            let html = '';
+            
+            // Header
+            html += '<div class="timeline-header">';
+            html += '<div class="timeline-header-cell agency">Agency / Service</div>';
+            for (let year = 2007; year <= 2033; year++) {
+                html += `<div class="timeline-header-cell">${year}</div>`;
+            }
+            html += '</div>';
+            
+            // Group contracts by agency
+            const agencies = {};
+            contractsData.forEach(c => {
+                if (!agencies[c.agency]) {
+                    agencies[c.agency] = [];
+                }
+                agencies[c.agency].push(c);
+            });
+            
+            // Build rows
+            Object.keys(agencies).forEach(agency => {
+                const agencyContracts = agencies[agency];
+                const firstContract = agencyContracts[0];
+                
+                html += `<div class="agency-row" data-agency="${agency}" data-types="${agencyContracts.map(c => c.type).join(' ')}" data-statuses="${agencyContracts.map(c => c.status).join(' ')}">`;
+                
+                // Agency info
+                html += '<div class="agency-info">';
+                html += `<div class="agency-name">${agency}</div>`;
+                html += `<div class="agency-service">${firstContract.service}</div>`;
+                
+                // Type badges
+                const types = [...new Set(agencyContracts.map(c => c.type))];
+                types.forEach(type => {
+                    html += `<span class="type-badge type-${type}">${type}</span> `;
+                });
+                
+                // Lyft spend
+                const totalSpend = agencyContracts.reduce((sum, c) => sum + (c.lyftSpend || 0), 0);
+                if (totalSpend > 0) {
+                    html += `<div class="agency-spend">Lyft: $${(totalSpend / 1000000).toFixed(1)}M</div>`;
+                }
+                
+                html += `<div class="agency-details">Software: ${firstContract.software}<br>Operator: ${firstContract.operators}</div>`;
+                html += '</div>';
+                
+                // Timeline cells
+                for (let year = 2007; year <= 2033; year++) {
+                    html += '<div class="timeline-cell"></div>';
+                }
+                
+                html += '</div>';
+            });
+            
+            chart.innerHTML = html;
+            
+            // Add contract bars after creating the structure
+            Object.keys(agencies).forEach(agency => {
+                const agencyContracts = agencies[agency];
+                const agencyRow = document.querySelector(`[data-agency="${agency}"]`);
+                
+                agencyContracts.forEach((contract, idx) => {
+                    const startPos = dateToPosition(contract.start);
+                    let endPos;
+                    let isOngoing = false;
+                    
+                    // Handle contracts without start dates (RFPs in evaluation/solicitation)
+                    let actualStartPos = startPos;
+                    if (!contract.start && contract.rfpRelease) {
+                        actualStartPos = dateToPosition(contract.rfpRelease);
+                    }
+                    
+                    if (contract.ongoing) {
+                        // For ongoing contracts, extend to 2030
+                        endPos = dateToPosition('12/1/30');
+                        isOngoing = true;
+                    } else if (contract.end) {
+                        endPos = dateToPosition(contract.end);
+                    } else if (actualStartPos !== null) {
+                        // For RFPs without end dates, show 12 months
+                        endPos = actualStartPos + (50 * 1);
+                    } else {
+                        return; // Skip if no valid position
+                    }
+                    
+                    if (actualStartPos !== null) {
+                        const width = endPos - actualStartPos;
+                        const rowClass = idx < 3 ? `row-${idx + 1}` : 'row-3';
+                        const statusClass = `bar-${contract.status}`;
+                        const ongoingClass = isOngoing ? 'ongoing-gradient' : '';
+                        const uncertainClass = contract.uncertainStart ? 'uncertain-start' : '';
+                        
+                        // Create bar element
+                        const bar = document.createElement('div');
+                        bar.className = `contract-bar ${rowClass} ${statusClass} ${ongoingClass} ${uncertainClass}`;
+                        bar.style.left = `${actualStartPos + 280}px`;
+                        bar.style.width = `${width}px`;
+                        bar.onclick = () => showModal(contract.id);
+                        
+                        // Add title text
+                        let titleText = contract.title;
+                        if (isOngoing) {
+                            const startYear = contract.start ? contract.start.split('/')[2] : 'Unknown';
+                            titleText += ` (Active since ${startYear}, no end date)`;
+                        }
+                        bar.title = titleText;
+                        bar.textContent = contract.title;
+                        
+                        // Add extension marker if applicable
+                        if (contract.extensionDate) {
+                            const extPos = dateToPosition(contract.extensionDate) - actualStartPos;
+                            const extMarker = document.createElement('span');
+                            extMarker.className = 'extension-marker';
+                            extMarker.style.left = `${extPos}px`;
+                            extMarker.textContent = 'EXT';
+                            bar.appendChild(extMarker);
+                        }
+                        
+                        // Add ongoing arrow for indefinite contracts
+                        if (isOngoing) {
+                            const arrow = document.createElement('span');
+                            arrow.className = 'ongoing-arrow';
+                            arrow.textContent = '→';
+                            bar.appendChild(arrow);
+                        }
+                        
+                        agencyRow.appendChild(bar);
+                    }
+                });
+            });
+        }
+
+        // Show modal
+        function showModal(contractId) {
+            const contract = contractsData.find(c => c.id === contractId);
+            if (!contract) return;
+            
+            // Get all references for this contract
+            const contractRefs = referencesData.filter(r => 
+                contract.contractIds.split(',').includes(r.contractId)
+            );
+            
+            document.getElementById('modalTitle').textContent = `${contract.agency} - ${contract.title}`;
+            
+            let bodyHtml = '';
+            
+            // Date indicator
+            if (contract.uncertainStart) {
+                bodyHtml += '<div class="date-note" style="background: #fff3cd; color: #856404; border: 2px solid #ffc107;">';
+                bodyHtml += '<strong>⚠️ ESTIMATED START DATE - NOT FROM SOURCE DATA</strong><br>';
+                bodyHtml += (contract.note || 'Actual start date unknown. Date shown is an estimate for visualization purposes.');
+                bodyHtml += '</div>';
+            }
+            if (contract.ongoing) {
+                bodyHtml += '<div class="date-note" style="background: #e7f3ff; color: #004085;">⏳ This is an indefinite contract with no specified end date.</div>';
+            }
+            if (contract.extensionDate) {
+                bodyHtml += '<div class="date-note" style="background: #d4edda; color: #155724;">✅ This contract includes an extension starting ' + contract.extensionDate + '</div>';
+            }
+            
+            // Contract details
+            bodyHtml += '<div class="modal-section">';
+            bodyHtml += '<div class="section-title">Contract Information</div>';
+            bodyHtml += `<div class="modal-row"><span class="modal-label">Agency:</span><span class="modal-value">${contract.agency}</span></div>`;
+            bodyHtml += `<div class="modal-row"><span class="modal-label">Service:</span><span class="modal-value">${contract.service}</span></div>`;
+            bodyHtml += `<div class="modal-row"><span class="modal-label">Type:</span><span class="modal-value">${contract.type}</span></div>`;
+            bodyHtml += `<div class="modal-row"><span class="modal-label">Status:</span><span class="modal-value">${contract.status}</span></div>`;
+            bodyHtml += '</div>';
+            
+            // Dates
+            bodyHtml += '<div class="modal-section">';
+            bodyHtml += '<div class="section-title">Key Dates</div>';
+            if (contract.rfpRelease) bodyHtml += `<div class="modal-row"><span class="modal-label">RFP Release:</span><span class="modal-value">${contract.rfpRelease}</span></div>`;
+            if (contract.dueDate) bodyHtml += `<div class="modal-row"><span class="modal-label">Due Date:</span><span class="modal-value">${contract.dueDate}</span></div>`;
+            if (contract.award) bodyHtml += `<div class="modal-row"><span class="modal-label">Award Date:</span><span class="modal-value">${contract.award}</span></div>`;
+            if (contract.start) bodyHtml += `<div class="modal-row"><span class="modal-label">Start Date:</span><span class="modal-value">${contract.start}</span></div>`;
+            if (contract.end) bodyHtml += `<div class="modal-row"><span class="modal-label">End Date:</span><span class="modal-value">${contract.end}</span></div>`;
+            if (contract.extensionDate) bodyHtml += `<div class="modal-row"><span class="modal-label">Extension Date:</span><span class="modal-value">${contract.extensionDate}</span></div>`;
+            bodyHtml += '</div>';
+            
+            // Operations
+            bodyHtml += '<div class="modal-section">';
+            bodyHtml += '<div class="section-title">Operations Details</div>';
+            bodyHtml += `<div class="modal-row"><span class="modal-label">Software:</span><span class="modal-value">${contract.software}</span></div>`;
+            bodyHtml += `<div class="modal-row"><span class="modal-label">Operators:</span><span class="modal-value">${contract.operators}</span></div>`;
+            if (contract.lyftSpend) bodyHtml += `<div class="modal-row"><span class="modal-label">Lyft Spend:</span><span class="modal-value">$${(contract.lyftSpend/1000000).toFixed(1)}M</span></div>`;
+            bodyHtml += '</div>';
+            
+            // Data sources
+            bodyHtml += '<div class="modal-section">';
+            bodyHtml += `<div class="section-title">Data Sources (${contractRefs.length} Verified)</div>`;
+            if (contractRefs.length > 0) {
+                contractRefs.forEach(ref => {
+                    bodyHtml += '<div class="source-card">';
+                    bodyHtml += `<span class="source-type">${ref.sourceType.replace('_', ' ')}</span>`;
+                    bodyHtml += `<div class="source-title">${ref.title}</div>`;
+                    bodyHtml += `<div class="source-desc">${ref.desc}</div>`;
+                    if (ref.url) {
+                        bodyHtml += `<a href="${ref.url}" target="_blank" class="source-link">View Source →</a>`;
+                    }
+                    bodyHtml += '</div>';
+                });
+            } else {
+                bodyHtml += '<p style="font-size: 12px; color: #6c757d;">No verified sources available for this contract.</p>';
+            }
+            bodyHtml += '</div>';
+            
+            document.getElementById('modalBody').innerHTML = bodyHtml;
+            document.getElementById('modal').classList.add('show');
+            document.getElementById('modalOverlay').classList.add('show');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('show');
+            document.getElementById('modalOverlay').classList.remove('show');
+        }
+
+        // Filter functionality
+        function filterRows() {
+            const typeFilter = document.getElementById('typeFilter').value;
+            const statusFilter = document.getElementById('statusFilter').value;
+            const searchTerm = document.getElementById('searchBox').value.toLowerCase();
+            
+            const rows = document.querySelectorAll('.agency-row');
+            rows.forEach(row => {
+                const agency = row.dataset.agency.toLowerCase();
+                const types = row.dataset.types;
+                const statuses = row.dataset.statuses;
+                
+                let show = true;
+                
+                if (searchTerm && !agency.includes(searchTerm)) {
+                    show = false;
+                }
+                
+                if (typeFilter !== 'all' && !types.includes(typeFilter)) {
+                    show = false;
+                }
+                
+                if (statusFilter !== 'all' && !statuses.includes(statusFilter)) {
+                    show = false;
+                }
+                
+                row.style.display = show ? '' : 'none';
+            });
+        }
+
+        // Build references tab
+        function buildReferences() {
+            const container = document.getElementById('referencesContainer');
+            let html = '<div class="ref-section">';
+            html += '<h2>📚 Complete Data Sources & References</h2>';
+            html += '<p style="margin-bottom: 20px;">All 46 verified sources from official procurement portals, board resolutions, and press releases.</p>';
+            
+            // Group references by agency
+            const agencyRefs = {};
+            contractsData.forEach(contract => {
+                if (!agencyRefs[contract.agency]) {
+                    agencyRefs[contract.agency] = {
+                        contracts: [],
+                        refs: []
+                    };
+                }
+                agencyRefs[contract.agency].contracts.push(contract);
+                
+                // Get references for this contract
+                const refs = referencesData.filter(r => 
+                    contract.contractIds.split(',').includes(r.contractId)
+                );
+                agencyRefs[contract.agency].refs.push(...refs);
+            });
+            
+            // Build reference cards by agency
+            Object.keys(agencyRefs).forEach(agency => {
+                const data = agencyRefs[agency];
+                if (data.refs.length > 0) {
+                    html += '<div class="ref-agency">';
+                    html += `<div class="ref-agency-title">${agency} <span class="verified-badge">✓ ${data.refs.length} Sources</span></div>`;
+                    
+                    // Group by contract
+                    data.contracts.forEach(contract => {
+                        const contractRefs = data.refs.filter(r => 
+                            contract.contractIds.split(',').includes(r.contractId)
+                        );
+                        if (contractRefs.length > 0) {
+                            html += '<div class="ref-contract">';
+                            html += `<div class="ref-contract-title">${contract.title}</div>`;
+                            contractRefs.forEach(ref => {
+                                html += `<div style="margin-left: 10px; margin-bottom: 5px;">`;
+                                html += `• <strong>${ref.title}</strong>: ${ref.desc}`;
+                                if (ref.url) {
+                                    html += ` [<a href="${ref.url}" target="_blank" style="color: #667eea;">View</a>]`;
+                                }
+                                html += '</div>';
+                            });
+                            html += '</div>';
+                        }
+                    });
+                    
+                    html += '</div>';
+                }
+            });
+            
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        function switchTab(idx) {
+            const tabs = document.querySelectorAll('.tab');
+            const contents = document.querySelectorAll('.tab-content');
+            
+            tabs.forEach(t => t.classList.remove('active'));
+            contents.forEach(c => c.classList.remove('active'));
+            
+            tabs[idx].classList.add('active');
+            contents[idx].classList.add('active');
+        }
+
+        // Initialize
+        buildGantt();
+        buildReferences();
+
+        // Close modal on Escape
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>
